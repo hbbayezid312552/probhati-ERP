@@ -1,0 +1,103 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+
+    steps:
+      # 1. Get project code
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      # 3. Install project dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Install Capacitor
+      - name: Install Capacitor
+        run: |
+          npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8
+
+      # 5. Build React/Vite project
+      - name: Build web application
+        run: npm run build
+
+      # 6. Create Capacitor config if it does not exist
+      - name: Create Capacitor config
+        run: |
+          if [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.json ]; then
+            cat > capacitor.config.ts <<'EOF'
+          import type { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.probhati.erp',
+            appName: 'Probhati ERP',
+            webDir: 'dist',
+            bundledWebRuntime: false
+          };
+
+          export default config;
+          EOF
+          fi
+
+      # 7. Add Android platform if not already present
+      - name: Add Android platform
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+
+      # 8. Copy web files to Android
+      - name: Sync Capacitor
+        run: |
+          npx cap sync android
+
+      # 9. Setup Java
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # 10. Setup Android SDK
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 11. Install Android SDK packages
+      - name: Install Android SDK
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      # 12. Make Gradle executable
+      - name: Make Gradle executable
+        run: chmod +x android/gradlew
+
+      # 13. Build APK
+      - name: Build Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      # 14. Upload APK
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Probhati-ERP-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
