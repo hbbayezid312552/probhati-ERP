@@ -24,11 +24,12 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install --legacy-peer-deps
 
       - name: Install Capacitor
         run: |
-          npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8
+          npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 --legacy-peer-deps
 
       - name: Build web application
         run: npm run build
@@ -57,7 +58,8 @@ jobs:
           fi
 
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: |
+          npx cap sync android
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -74,11 +76,13 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Make Gradle executable
-        run: chmod +x android/gradlew
+        run: |
+          chmod +x android/gradlew
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: |
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
