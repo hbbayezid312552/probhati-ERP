@@ -15,25 +15,32 @@ jobs:
 
     steps:
 
+      # 1. Get project
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # 2. Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
 
+      # 3. Install project dependencies
       - name: Install dependencies
         run: |
           npm install --legacy-peer-deps
 
+      # 4. Install Capacitor
       - name: Install Capacitor
         run: |
           npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 --legacy-peer-deps
 
+      # 5. Build React/Vite
       - name: Build web application
-        run: npm run build
+        run: |
+          npm run build
 
+      # 6. Create Capacitor configuration
       - name: Create Capacitor config
         run: |
           if [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.json ]; then
@@ -51,39 +58,50 @@ jobs:
           EOF
           fi
 
+      # 7. Add Android
       - name: Add Android platform
         run: |
           if [ ! -d android ]; then
             npx cap add android
           fi
 
+      # 8. Sync web app with Android
       - name: Sync Capacitor
         run: |
           npx cap sync android
 
+      # 9. Java 21
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
+      # 10. Android SDK
+      # IMPORTANT: Do NOT use the old "tools" package
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
 
-      - name: Install Android SDK
+      # 11. Install required Android SDK packages
+      - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
+      # 12. Make Gradle executable
       - name: Make Gradle executable
         run: |
           chmod +x android/gradlew
 
+      # 13. Build APK
       - name: Build APK
         working-directory: android
         run: |
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
+      # 14. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
